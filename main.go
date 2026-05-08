@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
@@ -10,6 +11,16 @@ import (
 	"github.com/zepetriko/go_aggregator/internal/config"
 	"github.com/zepetriko/go_aggregator/internal/database"
 )
+
+func middlewareLoggedIn(handler func(s *cli.State, cmd cli.Command, user database.User) error) func(*cli.State, cli.Command) error {
+	return func(s *cli.State, cmd cli.Command) error {
+		currentUser, err := s.Db.GetUser(context.Background(), s.Config.CurrentUserName)
+		if err != nil {
+			return err
+		}
+		return handler(s, cmd, currentUser)
+	}
+}
 
 func main() {
 	cfg, err := config.Read()
@@ -36,8 +47,12 @@ func main() {
 	commands.Register("reset", cli.HandlerReset)
 	commands.Register("users", cli.HandlerUsers)
 	commands.Register("agg", cli.HandlerAgg)
-	commands.Register("addfeed", cli.HandlerAddFeed)
+	commands.Register("addfeed", middlewareLoggedIn(cli.HandlerAddFeed))
 	commands.Register("feeds", cli.HandlerFeeds)
+	commands.Register("follow", middlewareLoggedIn(cli.HandlerFollow))
+	commands.Register("following", middlewareLoggedIn(cli.HandlerFollowing))
+	commands.Register("unfollow", middlewareLoggedIn(cli.HandlerUnfollow))
+	commands.Register("browse", middlewareLoggedIn(cli.HandlerBrowse))
 
 	if len(os.Args) < 2 {
 		fmt.Println("error: not enough arguments")

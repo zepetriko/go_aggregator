@@ -10,7 +10,7 @@ import (
 	"github.com/zepetriko/go_aggregator/internal/database"
 )
 
-func HandlerAddFeed(s *State, cmd Command) error {
+func HandlerAddFeed(s *State, cmd Command, user database.User) error {
 	if len(cmd.Args) != 2 {
 		return errors.New("addfeed <name> <url> required")
 	}
@@ -38,6 +38,20 @@ func HandlerAddFeed(s *State, cmd Command) error {
 		return err
 	}
 
-	fmt.Printf("Feed created: %+v\n", feed)
+	feed_follow, err := s.Db.CreateFeedFollow(
+		context.Background(),
+		database.CreateFeedFollowParams{
+			ID:        uuid.New(),
+			CreatedAt: time.Now().UTC(),
+			UpdatedAt: time.Now().UTC(),
+			UserID:    currentUser.ID,
+			FeedID:    feed.ID,
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Feed %s added and followed by %s\n", feed.Name, feed_follow.UserName)
 	return nil
 }
